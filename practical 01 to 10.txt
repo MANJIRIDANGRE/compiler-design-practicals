@@ -1,0 +1,393 @@
+%{
+#include <stdio.h>
+int yywrap(void); // Declaration
+%}
+
+%%
+
+[a-b]*abb     { printf("Valid String: %s\n", yytext); }
+.             { printf("Invalid String: %s\n", yytext); }
+
+%%
+
+int yywrap(void) {
+    return 1;
+}
+
+int main() {
+    yylex();
+    return 0;
+}
+
+
+
+
+    %{
+#include <stdio.h>
+int yywrap(void); // Declaration
+%}
+
+%%
+
+[ \t\n]                  ; /* Ignore whitespace and newline */
+
+[a-zA-Z_][a-zA-Z0-9_]*   { printf("Identifier: %s\n", yytext); }
+
+0[xX][0-9a-fA-F]+        { printf("Hexadecimal Constant: %s\n", yytext); }
+0[0-7]+                  { printf("Octal Constant: %s\n", yytext); }
+[1-9][0-9]*              { printf("Decimal Constant: %s\n", yytext); }
+
+[0-9]+\.[0-9]+           { printf("Floating Point Constant: %s\n", yytext); }
+[0-9]+[eE][-+]?[0-9]+    { printf("Exponential Constant: %s\n", yytext); }
+
+.                        { printf("Invalid Token: %s\n", yytext); }
+
+%%
+
+int yywrap(void) {
+    return 1;
+}
+
+int main() {
+    yylex();
+    return 0;
+}
+
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+int main() {
+    char num[20];
+    double decimal;
+    
+    printf("Enter an integer constant (in decimal, octal, hexadecimal, or floating-point format): ");
+    scanf("%s", num);
+
+    int is_negative = 0;
+    if (num[0] == '-') {
+        is_negative = 1;
+        memmove(num, num + 1, strlen(num));
+    }
+
+    int base = 10;
+    if (num[0] == '0') {
+        if (num[1] == 'x' || num[1] == 'X') {
+            base = 16;
+            memmove(num, num + 2, strlen(num));
+        }
+        else if (strchr(num, '.') != NULL) {
+            base = 10;
+        }
+        else {
+            base = 8;
+        }
+    }
+
+    decimal = 0;
+    int i = 0;
+    while (num[i] != '\0') {
+        double digit;
+        if (isdigit(num[i])) {
+            digit = num[i] - '0';
+        }
+        else if (isalpha(num[i])) {
+            digit = toupper(num[i]) - 'A' + 10;
+        }
+        else if (num[i] == '.') {
+            i++;
+            double factor = 0.1;
+            while (num[i] != '\0') {
+                digit += (num[i] - '0') * factor;
+                factor *= 0.1;
+                i++;
+            }
+            break;  // Exit the loop after processing the fractional part
+        }
+        else {
+            printf("Invalid character: %c\n", num[i]);
+            return 1;
+        }
+
+        if (digit >= base) {
+            printf("Invalid digit for base %d: %c\n", base, num[i]);
+            return 1;
+        }
+        decimal = decimal * base + digit;
+        i++;
+    }
+    if (is_negative) {
+        decimal = -decimal;
+    }
+    printf("The decimal equivalent of %s is %f\n", num, decimal);
+
+    return 0;
+}
+
+
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define SIZE 20
+
+int main() {
+    char pro[SIZE], alpha[SIZE], beta[SIZE];
+    int nonterminal, i, j, index = 5; // index adjusted for ' -> '
+    printf("Enter the production as E -> E|a:");
+    scanf("%s", pro);
+    nonterminal = pro[0];
+    if (nonterminal == pro[index]) {
+        int alphaIndex = 0, betaIndex = 0;
+        int isAlpha = 1; // Flag to differentiate between alpha and beta
+        for (i = index + 3; pro[i] != '\0'; i++) {
+            if (pro[i] == '+') {
+                isAlpha = 0; // Beta part starts after '+'
+                continue;
+            }
+            if (pro[i] == '|') {
+                alpha[alphaIndex] = '\0';
+                isAlpha = 1; // Reset flag for next term after '|'
+                alphaIndex = 0;
+                continue;
+            }
+            if (isAlpha) {
+                alpha[alphaIndex++] = pro[i];
+            } else {
+                beta[betaIndex++] = pro[i];
+            }
+        }
+        alpha[alphaIndex] = '\0';
+        beta[betaIndex] = '\0';
+
+        printf("\nGrammar without left recursion:\n\n");
+        printf("%c->%s%c'\n", nonterminal, beta, nonterminal);
+        printf("%c->%s%c'\n", nonterminal, alpha, nonterminal);
+    } else {
+        printf("\nThis grammar is not left recursion.\n");
+    }
+    return 0;
+}
+
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+
+bool parser_E(char *input, int *index);
+bool parser_EE(char *input, int *index);
+
+bool parser_EE(char *input, int *index) {
+    if (input[*index] == '+' || input[*index] == '-') {
+        (*index)++;
+        return parser_E(input, index);
+    } else {
+        return false;
+    }
+}
+
+bool parser_E(char *input, int *index) {
+    if (input[*index] == 'a' || input[*index] == 'b') {
+        (*index)++;
+        return true;
+    } else if (input[*index] == '+' || input[*index] == '-') {
+        (*index)++;
+        return parser_EE(input, index) && parser_E(input, index);
+    } else {
+        return false;
+    }
+}
+
+int main() {
+    char input[100]; // Adjust the size according to your needs
+    int index = 0;
+    
+    printf("Enter the input string:\n");
+    scanf("%s", input);
+    
+    bool success = parser_E(input, &index);
+    if (success && index == strlen(input)) {
+        printf("The input string can be accepted using the grammar.\n");   
+    } else {
+        printf("The input string cannot be accepted using the grammar.\n");
+    }
+        
+    return 0;
+}
+
+
+
+/* calc.y */
+%{
+#include <stdio.h>
+#include <stdlib.h>
+%}
+
+%token NUMBER
+%left '+' '-'
+%left '*' '/'
+%start expr
+
+%%
+
+expr: expr '+' expr  { $$ = $1 + $3; }
+    | expr '-' expr  { $$ = $1 - $3; }
+    | expr '*' expr  { $$ = $1 * $3; }
+    | expr '/' expr  { 
+                        if ($3 == 0) {
+                            printf("Error: Division by zero\n");
+                            exit(1);
+                        }
+                        $$ = $1 / $3; 
+                    }
+    | '(' expr ')'    { $$ = $2; }
+    | NUMBER          { $$ = $1; }
+    ;
+
+%%
+
+int main() {
+    yyparse();
+    return 0;
+}
+
+void yyerror(const char *s) {
+    fprintf(stderr, "Error: %s\n", s);
+}
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+#define MAX_SIZE 100
+
+// Define a stack structure
+typedef struct {
+    int items[MAX_SIZE];
+    int top;
+} Stack;
+
+// Function to initialize the stack
+void initialize(Stack *s) {
+    s->top = -1;
+}
+
+// Function to push an item onto the stack
+void push(Stack *s, int value) {
+    if (s->top == MAX_SIZE - 1) {
+        printf("Stack Overflow\n");
+        exit(EXIT_FAILURE);
+    }
+    s->items[++(s->top)] = value;
+}
+
+// Function to pop an item from the stack
+int pop(Stack *s) {
+    if (s->top == -1) {
+        printf("Stack Underflow\n");
+        exit(EXIT_FAILURE);
+    }
+    return s->items[(s->top)--];
+}
+
+// Function to evaluate the postfix expression
+int evaluatePostfix(char *expression) {
+    Stack stack;
+    initialize(&stack);
+
+    for (int i = 0; expression[i] != '\0'; i++) {
+        char ch = expression[i];
+
+        if (isdigit(ch)) {
+            push(&stack, ch - '0');
+        } else {
+            int operand2 = pop(&stack);
+            int operand1 = pop(&stack);
+
+            switch (ch) {
+                case '+':
+                    push(&stack, operand1 + operand2);
+                    break;
+                case '-':
+                    push(&stack, operand1 - operand2);
+                    break;
+                case '*':
+                    push(&stack, operand1 * operand2);
+                    break;
+                case '/':
+                    push(&stack, operand1 / operand2);
+                    break;
+                default:
+                    printf("Invalid postfix expression\n");
+                    exit(EXIT_FAILURE);
+            }
+        }
+    }
+
+    if (stack.top != 0) {
+        printf("Invalid postfix expression\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return pop(&stack);
+}
+
+int main() {
+    char postfix[MAX_SIZE];
+    
+    printf("Enter postfix expression: ");
+    scanf("%s", postfix);
+
+    int result = evaluatePostfix(postfix);
+    printf("Result: %d\n", result);
+
+    return 0;
+}
+
+
+
+
+#include <stdio.h>
+
+void selectionSort(int arr[], int n) {
+    int i, j, minIndex, temp;
+    for (i = 0; i < n-1; i++) {
+        minIndex = i;
+        for (j = i+1; j < n; j++) {
+            if (arr[j] < arr[minIndex]) {
+                minIndex = j;
+            }
+        }
+        temp = arr[i];
+        arr[i] = arr[minIndex];
+        arr[minIndex] = temp;
+    }
+}
+
+int main() {
+    int arr[] = {64, 25, 12, 22, 11};
+    int n = sizeof(arr)/sizeof(arr[0]);
+    int i;
+    
+    printf("Array before sorting:\n");
+    for (i = 0; i < n; i++) {
+        printf("%d ", arr[i]);
+    }
+    
+    selectionSort(arr, n);
+    
+    printf("\nArray after sorting:\n");
+    for (i = 0; i < n; i++) {
+        printf("%d ", arr[i]);
+    }
+    
+    return 0;
+}
